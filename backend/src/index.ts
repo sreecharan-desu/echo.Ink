@@ -6,6 +6,7 @@ import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";  
 import bcryptjs from 'bcryptjs';
 import { sign } from "hono/jwt";
+import { handle } from 'hono/vercel';
 
 // Hardcoded values for MVP
 const JWT_SECRET = "8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v";
@@ -434,4 +435,10 @@ app.get('/health', async (c) => {
   }
 });
 
-export default app;
+// Change the export to match Vercel's requirements
+export const config = {
+  runtime: 'edge',
+};
+
+// Export the handler function for Vercel
+export default handle(app);
