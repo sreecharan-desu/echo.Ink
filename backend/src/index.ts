@@ -380,4 +380,8 @@ app.post('/posts', async(c) => {
   }
 });
 
+app.get('/health', (c) => {
+  return c.json({ status: 'ok' });
+});
+
 export default app;

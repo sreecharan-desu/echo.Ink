@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://echoink-api.vercel.app';
+const BASE_URL = 'https://your-vercel-backend-url.vercel.app';
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
