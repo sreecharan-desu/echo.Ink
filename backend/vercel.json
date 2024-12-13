@@ -1,16 +1,12 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "index.ts",
-        "use": "@vercel/node",
-        "vercel-build": "prisma generate && prisma migrate deploy && next build"
-      }
-    ],
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "index.ts"
-      }
-    ]
-  }
+  "version": 2,
+  "functions": {
+    "api/index.ts": {
+      "runtime": "nodejs16.x"
+    }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/index.ts" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
