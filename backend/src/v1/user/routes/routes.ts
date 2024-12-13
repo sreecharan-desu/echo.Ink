@@ -15,6 +15,7 @@ const userRouter = new Hono<{
     }
 }>();
 
+
 // Handle user signup
 userRouter.post('/signup',signupValidation,isUserExist,async(c)=>{
     // Initialize Prisma client with acceleration

@@ -18,7 +18,7 @@ app.use('/api/v1', v1Router);  // Corrected this line to use 'use' instead of 'r
 
 // Root route handler (optional)
 app.get('/', async (c) => {
-  return c.text("Hello from backend!");
+  return c.json({msg : "Hello from backend!"});
 });
 
 export default app;
