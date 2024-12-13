@@ -8,7 +8,7 @@ import bcryptjs from 'bcryptjs';
 import { sign } from "hono/jwt";
 export const JWT_SECRET="8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v"
 // Define router with environment variable bindings
-const userRouter = new Hono<{
+const app = new Hono<{
     Bindings : {
         DATABASE_URL : string;
         JWT_SECRET : string;
@@ -17,7 +17,7 @@ const userRouter = new Hono<{
 
 
 // Handle user signup
-userRouter.post('/signup',signupValidation,isUserExist,async(c)=>{
+app.post('/signup',signupValidation,isUserExist,async(c)=>{
     // Initialize Prisma client with acceleration
     const prisma = new PrismaClient({
         datasourceUrl : c.env.DATABASE_URL
@@ -42,7 +42,7 @@ userRouter.post('/signup',signupValidation,isUserExist,async(c)=>{
 })
 
 // Handle user signin
-userRouter.post('/signin',signinValidation,async(c)=>{
+app.post('/signin',signinValidation,async(c)=>{
     // Get request body
     const body:any = await c.req.json();
     
@@ -65,7 +65,7 @@ userRouter.post('/signin',signinValidation,async(c)=>{
 })
 
 // Get user details (protected route)
-userRouter.get('/me',AuthMiddleware,async(c)=>{
+app.get('/me',AuthMiddleware,async(c)=>{
     // Initialize Prisma client with acceleration
     const prisma = new PrismaClient({
         datasourceUrl : c.env.DATABASE_URL
@@ -102,7 +102,7 @@ userRouter.get('/me',AuthMiddleware,async(c)=>{
 })
 
 
-userRouter.post('/post',AuthMiddleware,async(c)=>{
+app.post('/post',AuthMiddleware,async(c)=>{
     const body:any = await c.req.json();
     const userId = c.get('jwtPayload').id;
 
@@ -124,7 +124,7 @@ userRouter.post('/post',AuthMiddleware,async(c)=>{
 })
 
 
-userRouter.put('/post/:id',AuthMiddleware,async(c)=>{
+app.put('/post/:id',AuthMiddleware,async(c)=>{
     const body:any = await c.req.json();
     const postId = c.req.param('id');
     
@@ -146,7 +146,7 @@ userRouter.put('/post/:id',AuthMiddleware,async(c)=>{
 })  
 
 
-userRouter.delete('/post/:id',AuthMiddleware,async(c)=>{
+app.delete('/post/:id',AuthMiddleware,async(c)=>{
     const postId = c.req.param('id');
 
     const prisma = new PrismaClient({
@@ -160,7 +160,7 @@ userRouter.delete('/post/:id',AuthMiddleware,async(c)=>{
     return c.json({message: `Post with id : ${post.id} deleted successfully`,success:true})
 })  
 
-userRouter.get('/posts',async(c)=>{
+app.get('/posts',async(c)=>{
     const prisma = new PrismaClient({
         datasourceUrl : c.env.DATABASE_URL
     }).$extends(withAccelerate())
@@ -185,7 +185,7 @@ userRouter.get('/posts',async(c)=>{
     return c.json({posts,success:true})
 })  
 
-userRouter.get('/post/:id', async(c) => {
+app.get('/post/:id', async(c) => {
     const postId = c.req.param('id');
 
     const prisma = new PrismaClient({
@@ -234,7 +234,7 @@ userRouter.get('/post/:id', async(c) => {
     }
 });
 
-userRouter.get('/posts',async(c)=>{
+app.get('/posts',async(c)=>{
     const body:any = await c.req.json();
     const prisma = new PrismaClient({
         datasourceUrl : c.env.DATABASE_URL
@@ -257,7 +257,7 @@ userRouter.get('/posts',async(c)=>{
 })  
 
 
-userRouter.post('/profile/:username', async(c) => {
+app.post('/profile/:username', async(c) => {
     const body = await c.req.json();
     const username = body.username;   
     const prisma = new PrismaClient({
@@ -319,7 +319,7 @@ userRouter.post('/profile/:username', async(c) => {
     }
 });
 
-userRouter.post('/posts', async(c) => {
+app.post('/posts', async(c) => {
     const body = await c.req.json();
     const { username } = body;
     
@@ -379,4 +379,4 @@ userRouter.post('/posts', async(c) => {
 });
 
 // Export the router
-export default userRouter;      
+export default app;      
