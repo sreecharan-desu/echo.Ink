@@ -5,5 +5,8 @@
       "src": "/api/(.*)",
       "dest": "src/index.ts"
     }
-  ]
+  ],
+  "build" : {
+    "vercel-build": "prisma generate && prisma migrate deploy && next build"
+  }  
 }
