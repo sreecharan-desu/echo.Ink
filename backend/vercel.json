@@ -3,7 +3,8 @@
     "builds": [
       {
         "src": "index.ts",
-        "use": "@vercel/node"
+        "use": "@vercel/node",
+        "vercel-build": "prisma generate && prisma migrate deploy && next build"
       }
     ],
     "routes": [
