@@ -1,0 +1,27 @@
+<svg
+  viewBox="0 0 100 100"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <rect width="100" height="100" rx="20" fill="#1E293B" />
+  <path
+    d="M25 50C25 35 35 25 50 25C65 25 75 35 75 50C75 65 65 75 50 75"
+    stroke="#60A5FA"
+    stroke-width="8"
+    stroke-linecap="round"
+    opacity="0.2"
+  />
+  <path
+    d="M32 50C32 39 39 32 50 32C61 32 68 39 68 50C68 61 61 68 50 68"
+    stroke="#60A5FA"
+    stroke-width="8"
+    stroke-linecap="round"
+    opacity="0.4"
+  />
+  <path
+    d="M39 50C39 43 43 39 50 39C57 39 61 43 61 50C61 57 57 61 50 61"
+    stroke="#60A5FA"
+    stroke-width="8"
+    stroke-linecap="round"
+  />
+</svg>

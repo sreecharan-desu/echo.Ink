@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Post" ADD COLUMN     "tags" TEXT[];
+
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "cerated_on" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
