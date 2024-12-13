@@ -12,4 +12,8 @@ app.use('/*', cors({
 }));
 app.route('/',v1Router);
 
+app.get('/',async(c) => {
+  c.text("Hello from backend!");
+})
+
 export default app
