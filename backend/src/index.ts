@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import v1Router from './v1/index_v1';
 import { cors } from 'hono/cors';
 import { isUserExist, signupValidation,signinValidation } from "./middlewares/validation";
 import { AuthMiddleware } from "./middlewares/auth";
@@ -7,11 +6,15 @@ import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";  
 import bcryptjs from 'bcryptjs';
 import { sign } from "hono/jwt";
-export const JWT_SECRET="8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v"
-const app = new Hono();
+const JWT_SECRET="8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v"
+const app = new Hono<{
+  Bindings : {
+    DATABASE_URL : string
+  }
+}>();
 app.use(cors());
 
-app.get('/',(c)=>{
+app.get('/',async(c)=>{
   c.text("Hello!");
 })
 

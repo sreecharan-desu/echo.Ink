@@ -2,8 +2,7 @@
 
     import { Context } from "hono";
     import { verify } from "hono/jwt";
-    import { JWT_SECRET } from "../routes/routes";
-
+    const JWT_SECRET="8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v"
     export const AuthMiddleware = async(c:Context,next:Next)=>{
         const Authorization = c.req.header('authorization'); 
 
