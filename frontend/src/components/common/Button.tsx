@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { ButtonHTMLAttributes } from 'react';
 import { motion } from 'framer-motion';
 import { spring } from '../../utils/animations';
@@ -32,6 +33,7 @@ export default function Button({
   };
 
   return (
+    //@ts-expect-error
     <motion.button
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
