@@ -2,8 +2,7 @@
   "name": "backend",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build"
+    "deploy": "wrangler deploy --minify"
   },
   "dependencies": {
     "@prisma/client": "^6.0.1",
