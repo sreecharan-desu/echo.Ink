@@ -7,12 +7,12 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["api/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["api/**/*"],
   "exclude": ["node_modules", "dist"]
 }
