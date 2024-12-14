@@ -428,5 +428,8 @@ app.post('/posts', async(c:Context) => {
   }
 });
 
-// Export for Vercel
-export default app;
+// Export for Vercel and Cloudflare Workers
+export default {
+  fetch: app.fetch,
+  port: 8787
+};
