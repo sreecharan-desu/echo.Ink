@@ -16,11 +16,5 @@
         "Access-Control-Allow-Headers": "Content-Type, Authorization"
       }
     }
-  ],
-  "functions": {
-    "api/**/*.ts": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  }
+  ]
 }
