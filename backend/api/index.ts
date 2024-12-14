@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import { isUserExist, signupValidation, signinValidation } from "./middlewares/validation";
 import { AuthMiddleware } from "./middlewares/auth";
 import { PrismaClient } from "@prisma/client/edge";
@@ -6,57 +6,34 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 import bcryptjs from 'bcryptjs';
 import { sign } from "hono/jwt";
 
-const JWT_SECRET = process.env.JWT_SECRET || "8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v";
-const DATABASE_URL = process.env.DATABASE_URL || "prisma://accelerate.prisma-data.net/?api_key=...";
+// For Cloudflare Workers, use env from context
+const app = new Hono<{
+  Bindings: {
+    JWT_SECRET: string;
+    DATABASE_URL: string;
+  }
+}>();
 
-// Initialize Prisma with connection timeout
+// Initialize single Prisma instance
 const prisma = new PrismaClient({
-  datasourceUrl: DATABASE_URL,
-  log: ['error'],
-}).$extends(withAccelerate()).$extends({
-  query: {
-    async $allOperations({ operation, model, args, query }) {
-      const start = performance.now();
-      try {
-        // Add 5 second timeout to all database operations
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Database timeout')), 5000);
-        });
-        const queryPromise = query(args);
-        const result = await Promise.race([queryPromise, timeoutPromise]);
-        return result;
-      } catch (error) {
-        console.error(`${model}.${operation} failed:`, error);
-        throw error;
-      } finally {
-        const end = performance.now();
-        console.log(`${model}.${operation} took ${end - start}ms`);
-      }
-    },
-  },
-});
+  datasourceUrl: "prisma://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlfa2V5IjoiMjRmYmJjNGUtZjdjMS00OTI1LWI2MGMtZWQ4MWM4MDU4NTBlIiwidGVuYW50X2lkIjoiMTFlYWNkZWYyYzk5YzAxNDA0NjA5MDlkNTY2YzgxMGQ4YjgzYmEwYzMyNDZkNDM0Y2JjYzZiNzEwY2UwOWU4ZiIsImludGVybmFsX3NlY3JldCI6IjYxNWJjNjJiLWRiZWYtNDI2YS05YmViLWVhYThiMzFkMTY1NyJ9.utqbfZGOhFR1Yy_hJ3Sr9LKa9lakDJi4dsvIcT3Q-4E",
+}).$extends(withAccelerate());
 
-const app = new Hono();
-
-// Basic error handling with timeout
+// Global error handler
 app.use('*', async (c, next) => {
   try {
-    // Add 9 second timeout to all requests
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 9000);
-    });
-    const responsePromise = next();
-    await Promise.race([responsePromise, timeoutPromise]);
+    await next();
   } catch (error) {
-    console.error(`Error: ${error}`);
+    console.error('Global error:', error);
     return c.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Internal Server Error' 
+      error: error instanceof Error ? error.message : 'Internal Server Error',
+      details: error instanceof Error ? error.stack : undefined
     }, 500);
   }
 });
 
-// CORS headers
+// CORS
 app.use('*', async (c, next) => {
   c.header('Access-Control-Allow-Origin', '*');
   c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -68,26 +45,25 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-// Quick health check
-app.get('/', (c) => c.text('OK', 200));
-
-// Add this helper function at the top of your file
-const getPrismaClient = (databaseUrl: string) => {
-  return new PrismaClient({
-    datasourceUrl: databaseUrl,
-    log: ['error', 'warn'],
-
-  }).$extends(withAccelerate());
-};
-
-// Handle user signup
-app.post('/signup', signupValidation, isUserExist, async(c) => {
+// Health check
+app.get('/', async (c) => {
   try {
-    const prisma = new PrismaClient({
-      datasourceUrl: DATABASE_URL
-    }).$extends(withAccelerate());
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    return c.json({ status: 'healthy', database: 'connected' });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    return c.json({ 
+      status: 'unhealthy', 
+      error: error instanceof Error ? error.message : 'Database connection failed' 
+    }, 500);
+  }
+});
 
-    const body = await c.req.json(); // Get the request body
+// Auth routes with better error handling
+app.post('/signup', signupValidation, isUserExist, async (c) => {
+  try {
+    const body = await c.req.json();
     const hashedPassword = await bcryptjs.hash(body.password, 10);
 
     const user = await prisma.user.create({
@@ -99,43 +75,51 @@ app.post('/signup', signupValidation, isUserExist, async(c) => {
 
     return c.json({
       success: true,
-      message: `User created successfully`
+      message: 'User created successfully'
     });
   } catch (error) {
     console.error('Signup error:', error);
-    throw error;
+    return c.json({ 
+      success: false, 
+      error: 'Failed to create user',
+      details: error instanceof Error ? error.message : undefined
+    }, 500);
   }
 });
 
-// Handle user signin
-app.post('/signin',signinValidation,async(c)=>{
+app.post('/signin', signinValidation, async (c) => {
   try {
-    const prisma = getPrismaClient(DATABASE_URL);
-    // Get request body
-    const body:any = await c.req.json();
-    
-    // Find user by username
+    const body = await c.req.json();
     const user = await prisma.user.findUnique({
-        where : {username : body.username}
-    })
-    
-    // Generate JWT token
-    console.log(JWT_SECRET)
-    const token = await sign({id:user?.id},JWT_SECRET)
+      where: { username: body.username }
+    });
 
-    // Return token and success status
-    return c.json({token,success:true})
+    if (!user) {
+      return c.json({ success: false, error: 'User not found' }, 404);
+    }
+
+    const validPassword = await bcryptjs.compare(body.password, user.password);
+    if (!validPassword) {
+      return c.json({ success: false, error: 'Invalid password' }, 401);
+    }
+
+    const token = await sign({ id: user.id }, "8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v");
+    return c.json({ token, success: true });
   } catch (error) {
     console.error('Signin error:', error);
-    throw error;
+    return c.json({ 
+      success: false, 
+      error: 'Authentication failed',
+      details: error instanceof Error ? error.message : undefined
+    }, 500);
   }
-})
+});
 
 // Get user details (protected route)
-app.get('/me',AuthMiddleware,async(c)=>{
+app.get('/me',AuthMiddleware,async(c:Context)=>{
   // Initialize Prisma client with acceleration
   const prisma = new PrismaClient({
-      datasourceUrl : DATABASE_URL
+      datasourceUrl: c.env.c.env.DATABASE_URL
   }).$extends(withAccelerate())
   
   const userId = c.get('jwtPayload').id;
@@ -169,16 +153,15 @@ app.get('/me',AuthMiddleware,async(c)=>{
 })
 
 
-app.post('/post',AuthMiddleware,async(c)=>{
+app.post('/post',AuthMiddleware,async(c:Context)=>{
   const body:any = await c.req.json();
   const userId = c.get('jwtPayload').id;
-
   const prisma = new PrismaClient({       
-      datasourceUrl : DATABASE_URL
+      datasourceUrl: c.env.c.env.DATABASE_URL
   }).$extends(withAccelerate())
 
   const post = await prisma.post.create({
-      data : {
+      data: {
           title : body.title,
           data : body.data,
           authorId : userId,
@@ -191,12 +174,12 @@ app.post('/post',AuthMiddleware,async(c)=>{
 })
 
 
-app.put('/post/:id',AuthMiddleware,async(c)=>{
-  const body:any = await c.req.json();
+app.put('/post/:id', AuthMiddleware, async (c: Context) => {
+  const body = await c.req.json();
   const postId = c.req.param('id');
   
   const prisma = new PrismaClient({
-      datasourceUrl : DATABASE_URL
+      datasourceUrl : c.env.DATABASE_URL
   }).$extends(withAccelerate())
 
   const post = await prisma.post.update({
@@ -213,11 +196,11 @@ app.put('/post/:id',AuthMiddleware,async(c)=>{
 })  
 
 
-app.delete('/post/:id',AuthMiddleware,async(c)=>{
+app.delete('/post/:id',AuthMiddleware,async(c:Context)=>{
   const postId = c.req.param('id');
 
   const prisma = new PrismaClient({
-      datasourceUrl : DATABASE_URL
+      datasourceUrl : c.env.DATABASE_URL
   }).$extends(withAccelerate())
 
   const post = await prisma.post.delete({
@@ -227,9 +210,9 @@ app.delete('/post/:id',AuthMiddleware,async(c)=>{
   return c.json({message: `Post with id : ${post.id} deleted successfully`,success:true})
 })  
 
-app.get('/posts',async(c)=>{
+app.get('/posts',async(c:Context)=>{
   const prisma = new PrismaClient({
-      datasourceUrl : DATABASE_URL
+      datasourceUrl : c.env.DATABASE_URL
   }).$extends(withAccelerate())
   const posts = await prisma.post.findMany(
       {
@@ -256,7 +239,7 @@ app.get('/post/:id', async(c) => {
   const postId = c.req.param('id');
 
   const prisma = new PrismaClient({
-      datasourceUrl: DATABASE_URL
+      datasourceUrl: c.env.DATABASE_URL
   }).$extends(withAccelerate());
 
   try {
@@ -301,10 +284,10 @@ app.get('/post/:id', async(c) => {
   }
 });
 
-app.get('/posts',async(c)=>{
+app.get('/posts',async(c:Context)=>{
   const body:any = await c.req.json();
   const prisma = new PrismaClient({
-      datasourceUrl : DATABASE_URL
+      datasourceUrl : c.env.DATABASE_URL
   }).$extends(withAccelerate())
   const posts = await prisma.post.findMany({
       where : {
@@ -328,7 +311,7 @@ app.post('/profile/:username', async(c) => {
   const body = await c.req.json();
   const username = body.username;   
   const prisma = new PrismaClient({
-      datasourceUrl: DATABASE_URL
+      datasourceUrl: c.env.DATABASE_URL
   }).$extends(withAccelerate())
 
   try {
@@ -386,12 +369,12 @@ app.post('/profile/:username', async(c) => {
   }
 });
 
-app.post('/posts', async(c) => {
+app.post('/posts', async(c:Context) => {
   const body = await c.req.json();
   const { username } = body;
   
   const prisma = new PrismaClient({
-      datasourceUrl: DATABASE_URL
+      datasourceUrl: c.env.DATABASE_URL
   }).$extends(withAccelerate());
 
   try {
@@ -445,27 +428,5 @@ app.post('/posts', async(c) => {
   }
 });
 
-app.get('/health', async (c) => {
-  try {
-    const prisma = new PrismaClient({
-      datasourceUrl: DATABASE_URL
-    }).$extends(withAccelerate());
-    
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
-    
-    return c.json({ 
-      status: 'ok',
-      database: 'connected'
-    });
-  } catch (error) {
-    console.error('Health check failed:', error);
-    return c.json({ 
-      status: 'error',
-      message: 'Database connection failed'
-    }, 500);
-  }
-});
-
 // Export for Vercel
-export default app.fetch;
+export default app;

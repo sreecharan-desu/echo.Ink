@@ -2,8 +2,8 @@
   "name": "backend",
   "version": "1.0.0",
   "scripts": {
-    "dev": "wrangler dev",
-    "build": "prisma generate",
+    "dev": "prisma generate --no-engine && wrangler dev api/index.ts",
+    "build": "prisma generate --no-engine",
     "deploy": "vercel deploy --prod"
   },
   "dependencies": {
