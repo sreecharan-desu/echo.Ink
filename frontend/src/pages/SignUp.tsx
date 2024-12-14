@@ -6,16 +6,31 @@ export default function SignUp() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { signup } = api;
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
     try {
-      await signup(username, password);
-      navigate('/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign up');
+      const response = await signup(username, password);
+      
+      if (!response.success) {
+        // Handle error from API response
+        setError(response.error || 'Failed to sign up');
+        return;
+      }
+
+      // Successful signup
+      navigate('/signin');
+    } catch (err: any) {
+      // Handle network or other errors
+      setError(err.response?.data?.error || 'Network error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -38,7 +53,11 @@ export default function SignUp() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="input"
+            placeholder="3-20 characters"
+            minLength={3}
+            maxLength={20}
             required
+            disabled={isLoading}
           />
         </div>
         <div>
@@ -51,11 +70,19 @@ export default function SignUp() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="input"
+            placeholder="At least 8 characters"
+            minLength={8}
+            maxLength={20}
             required
+            disabled={isLoading}
           />
         </div>
-        <button type="submit" className="w-full btn btn-primary">
-          Create Account
+        <button 
+          type="submit" 
+          className={`w-full btn btn-primary ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Creating Account...' : 'Create Account'}
         </button>
       </form>
       <p className="mt-4 text-center text-sm text-gray-600">

@@ -2,9 +2,9 @@
   "name": "backend",
   "version": "1.0.0",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "prisma generate && prisma migrate deploy && tsc",
-    "deploy": "vercel deploy --prod"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.0.1",
@@ -14,11 +14,10 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240208.0",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20.0.0",
-    "@vercel/node": "^3.0.0",
     "prisma": "^6.0.1",
     "typescript": "^5.0.0",
-    "vercel": "^33.0.0"
+    "wrangler": "^3.78.4"
   }
 }

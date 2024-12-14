@@ -17,11 +17,14 @@ export const signupValidation = async (c: Context, next: Next) => {
   if (!result.success) {
     return c.json({ error: result.error.issues[0].message, success: false }, 400);
   }
+  
+  c.set('body', body);
   await next();
 };
 
 export const isUserExist = async (c: Context, next: Next) => {
-  const body = await c.req.json();
+  const body = c.get('body');
+  
   const prisma = new PrismaClient({
     datasourceUrl: DATABASE_URL
   }).$extends(withAccelerate());
@@ -55,5 +58,6 @@ export const signinValidation = async (c: Context, next: Next) => {
     return c.json({ error: "Invalid password", success: false }, 400);
   }
 
+  c.set('user', user);
   await next();
 };

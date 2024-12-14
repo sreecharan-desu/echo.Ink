@@ -6,7 +6,6 @@ import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";  
 import bcryptjs from 'bcryptjs';
 import { sign } from "hono/jwt";
-import { handle } from 'hono/vercel';
 
 // Hardcoded values for MVP
 const JWT_SECRET = "8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v";
@@ -44,18 +43,18 @@ const getPrismaClient = (databaseUrl: string) => {
   return new PrismaClient({
     datasourceUrl: databaseUrl,
     log: ['error', 'warn'],
-    connectionTimeout: 20000, // 20 seconds
+
   }).$extends(withAccelerate());
 };
 
 // Handle user signup
-app.post('/signup',signupValidation,isUserExist,async(c)=>{
+app.post('/signup', signupValidation, isUserExist, async(c) => {
   try {
     const prisma = new PrismaClient({
       datasourceUrl: DATABASE_URL
     }).$extends(withAccelerate());
 
-    const body = await c.req.json();
+    const body = await c.req.json(); // Get the request body
     const hashedPassword = await bcryptjs.hash(body.password, 10);
 
     const user = await prisma.user.create({
@@ -67,13 +66,13 @@ app.post('/signup',signupValidation,isUserExist,async(c)=>{
 
     return c.json({
       success: true,
-      message: `User with id: ${user.id} created successfully`
+      message: `User created successfully`
     });
   } catch (error) {
     console.error('Signup error:', error);
     throw error;
   }
-})
+});
 
 // Handle user signin
 app.post('/signin',signinValidation,async(c)=>{
@@ -435,10 +434,5 @@ app.get('/health', async (c) => {
   }
 });
 
-// Change the export to match Vercel's requirements
-export const config = {
-  runtime: 'edge',
-};
-
-// Export the handler function for Vercel
-export default handle(app);
+// Export the handler function for Cloudflare Workers
+export default app;
