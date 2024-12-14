@@ -434,5 +434,5 @@ app.get('/health', async (c) => {
   }
 });
 
-// Export the handler function for Cloudflare Workers
-export default app;
+// Export for Vercel
+export default app.fetch;
