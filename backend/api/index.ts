@@ -451,4 +451,6 @@ app.get('/health', async (c: Context) => {
 });
 
 // Export for Vercel
-export default app;
+export default async function handler(req: Request) {
+  return app.fetch(req);
+}
