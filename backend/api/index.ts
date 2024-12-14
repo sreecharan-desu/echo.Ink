@@ -24,15 +24,20 @@ app.use('*', async (c, next) => {
   }
 });
 
-// CORS configuration
-app.use(cors({
-  origin: '*', // Allow all origins for MVP
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  exposeHeaders: ['Content-Length', 'X-Requested-With'],
-  maxAge: 86400,
-  credentials: true
-}));
+// Add this custom CORS middleware right after error handling
+app.use('*', async (c, next) => {
+  // Add CORS headers
+  c.header('Access-Control-Allow-Origin', '*');
+  c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Handle OPTIONS request
+  if (c.req.method === 'OPTIONS') {
+    return c.text('', 204);
+  }
+  
+  await next();
+});
 
 app.get('/',async(c)=>{
   c.text("Hello!");
