@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { isUserExist, signupValidation, signinValidation } from "./middlewares/validation";
 import { AuthMiddleware } from "./middlewares/auth";
 import { PrismaClient } from "@prisma/client/edge";
@@ -7,41 +6,70 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 import bcryptjs from 'bcryptjs';
 import { sign } from "hono/jwt";
 
-// Hardcoded values for MVP
-const JWT_SECRET = "8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v";
-const DATABASE_URL = "prisma://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlfa2V5IjoiMjRmYmJjNGUtZjdjMS00OTI1LWI2MGMtZWQ4MWM4MDU4NTBlIiwidGVuYW50X2lkIjoiMTFlYWNkZWYyYzk5YzAxNDA0NjA5MDlkNTY2YzgxMGQ4YjgzYmEwYzMyNDZkNDM0Y2JjYzZiNzEwY2UwOWU4ZiIsImludGVybmFsX3NlY3JldCI6IjYxNWJjNjJiLWRiZWYtNDI2YS05YmViLWVhYThiMzFkMTY1NyJ9.utqbfZGOhFR1Yy_hJ3Sr9LKa9lakDJi4dsvIcT3Q-4E";
+const JWT_SECRET = process.env.JWT_SECRET || "8f9d3a1c6b4e7m2k5n8p0q9r4s7t2u5v";
+const DATABASE_URL = process.env.DATABASE_URL || "prisma://accelerate.prisma-data.net/?api_key=...";
+
+// Initialize Prisma with connection timeout
+const prisma = new PrismaClient({
+  datasourceUrl: DATABASE_URL,
+  log: ['error'],
+}).$extends(withAccelerate()).$extends({
+  query: {
+    async $allOperations({ operation, model, args, query }) {
+      const start = performance.now();
+      try {
+        // Add 5 second timeout to all database operations
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Database timeout')), 5000);
+        });
+        const queryPromise = query(args);
+        const result = await Promise.race([queryPromise, timeoutPromise]);
+        return result;
+      } catch (error) {
+        console.error(`${model}.${operation} failed:`, error);
+        throw error;
+      } finally {
+        const end = performance.now();
+        console.log(`${model}.${operation} took ${end - start}ms`);
+      }
+    },
+  },
+});
 
 const app = new Hono();
 
-// Basic error handling and logging
+// Basic error handling with timeout
 app.use('*', async (c, next) => {
-  console.log(`${c.req.method} ${c.req.url}`);
   try {
-    await next();
+    // Add 9 second timeout to all requests
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 9000);
+    });
+    const responsePromise = next();
+    await Promise.race([responsePromise, timeoutPromise]);
   } catch (error) {
-    console.error(`Error handling ${c.req.method} ${c.req.url}:`, error);
-    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+    console.error(`Error: ${error}`);
+    return c.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Internal Server Error' 
+    }, 500);
   }
 });
 
-// Add this custom CORS middleware right after error handling
+// CORS headers
 app.use('*', async (c, next) => {
-  // Add CORS headers
   c.header('Access-Control-Allow-Origin', '*');
   c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
-  // Handle OPTIONS request
   if (c.req.method === 'OPTIONS') {
     return c.text('', 204);
   }
-  
   await next();
 });
 
-app.get('/',async(c)=>{
-  c.text("Hello!");
-})
+// Quick health check
+app.get('/', (c) => c.text('OK', 200));
 
 // Add this helper function at the top of your file
 const getPrismaClient = (databaseUrl: string) => {
